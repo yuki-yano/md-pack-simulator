@@ -571,6 +571,7 @@ function RoyalChallengeCalculator() {
             <p className="font-medium text-foreground">シークレットパック</p>
             <p className="pl-3">• 5-8枚目のみパック内UR（ロイヤル対象）</p>
             <p className="pl-3">• 1-4枚目はパック外UR（ロイヤル対象外）</p>
+            <p className="pl-3">• 確定UR: 10連でUR0枚なら次の10連10パック目8枚目が100%</p>
           </div>
         </CardContent>
       </Card>
