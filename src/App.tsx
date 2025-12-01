@@ -357,7 +357,7 @@ function PackExpectedValueCalculator() {
             <p className="pl-3">• 1-4枚目: 各2.5%でパック外UR</p>
             <p className="pl-3">• 5-8枚目: 各2.5%でパック内UR</p>
             <p className="pl-3">• 10パック目8枚目: 20%でパック内UR</p>
-            <p className="pl-3">• 天井: 10連でUR0枚なら次の10連10パック目8枚目が100%</p>
+            <p className="pl-3">• 確定UR: 10連でUR0枚なら次の10連10パック目8枚目が100%</p>
           </div>
         </CardContent>
       </Card>
