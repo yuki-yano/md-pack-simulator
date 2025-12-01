@@ -1,4 +1,10 @@
 import { useState, useCallback } from 'react'
+import {
+  useQueryState,
+  parseAsStringLiteral,
+  parseAsInteger,
+  createParser,
+} from 'nuqs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,10 +21,63 @@ import {
 import { runSimulation } from '@/lib/simulator'
 import type { PackType, SimulationResult, WantedCard } from '@/lib/types'
 
+const packTypes = ['selection', 'secret'] as const
+
+// UTF-8対応のBase64エンコード/デコード
+const encodeBase64 = (str: string): string => {
+  const bytes = new TextEncoder().encode(str)
+  const binString = Array.from(bytes, (byte) => String.fromCodePoint(byte)).join('')
+  return btoa(binString)
+}
+
+const decodeBase64 = (base64: string): string => {
+  const binString = atob(base64)
+  const bytes = Uint8Array.from(binString, (char) => char.codePointAt(0)!)
+  return new TextDecoder().decode(bytes)
+}
+
+const validateWantedCards = (json: unknown): json is WantedCard[] => {
+  if (!Array.isArray(json)) return false
+  for (const item of json) {
+    if (
+      typeof item !== 'object' ||
+      item === null ||
+      typeof item.id !== 'string' ||
+      typeof item.name !== 'string' ||
+      typeof item.count !== 'number' ||
+      typeof item.disableCraft !== 'boolean'
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
+const parseAsWantedCards = createParser({
+  parse: (value: string): WantedCard[] | null => {
+    try {
+      const json = JSON.parse(decodeBase64(value))
+      return validateWantedCards(json) ? json : null
+    } catch {
+      return null
+    }
+  },
+  serialize: (value: WantedCard[]): string => encodeBase64(JSON.stringify(value)),
+})
+
 function PackExpectedValueCalculator() {
-  const [packType, setPackType] = useState<PackType>('selection')
-  const [totalUrInPack, setTotalUrInPack] = useState(8)
-  const [wantedCards, setWantedCards] = useState<WantedCard[]>([])
+  const [packType, setPackType] = useQueryState(
+    'type',
+    parseAsStringLiteral(packTypes).withDefault('selection')
+  )
+  const [totalUrInPack, setTotalUrInPack] = useQueryState(
+    'ur',
+    parseAsInteger.withDefault(8)
+  )
+  const [wantedCards, setWantedCards] = useQueryState(
+    'cards',
+    parseAsWantedCards.withDefault([])
+  )
   const [result, setResult] = useState<SimulationResult | null>(null)
   const [isCalculating, setIsCalculating] = useState(false)
 
@@ -32,23 +91,23 @@ function PackExpectedValueCalculator() {
       disableCraft: false,
     }
     setWantedCards((prev) => [...prev, newCard])
-  }, [wantedCards.length, totalUrInPack])
+  }, [wantedCards.length, totalUrInPack, setWantedCards])
 
   const handleRemoveCard = useCallback((id: string) => {
     setWantedCards((prev) => prev.filter((card) => card.id !== id))
-  }, [])
+  }, [setWantedCards])
 
   const handleUpdateName = useCallback((id: string, name: string) => {
     setWantedCards((prev) =>
       prev.map((card) => (card.id === id ? { ...card, name } : card))
     )
-  }, [])
+  }, [setWantedCards])
 
   const handleUpdateCount = useCallback((id: string, count: number) => {
     setWantedCards((prev) =>
       prev.map((card) => (card.id === id ? { ...card, count } : card))
     )
-  }, [])
+  }, [setWantedCards])
 
   const handleUpdateDisableCraft = useCallback(
     (id: string, disableCraft: boolean) => {
@@ -56,7 +115,7 @@ function PackExpectedValueCalculator() {
         prev.map((card) => (card.id === id ? { ...card, disableCraft } : card))
       )
     },
-    []
+    [setWantedCards]
   )
 
   const handleCalculate = useCallback(() => {
@@ -120,9 +179,6 @@ function PackExpectedValueCalculator() {
               onChange={(e) => {
                 const value = Number(e.target.value)
                 setTotalUrInPack(value)
-                if (wantedCards.length > value) {
-                  setWantedCards((prev) => prev.slice(0, value))
-                }
               }}
             />
           </div>
