@@ -18,12 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { runSimulation, runRoyalSimulation } from '@/lib/simulator'
+import { runSimulation, runRoyalSimulation, calculateBakushi } from '@/lib/simulator'
 import type {
   PackType,
   SimulationResult,
   WantedCard,
   RoyalChallengeResult,
+  BakushiResult,
 } from '@/lib/types'
 
 const packTypes = ['selection', 'secret'] as const
@@ -577,7 +578,174 @@ function RoyalChallengeCalculator() {
   )
 }
 
-const tabValues = ['expected-value', 'royal-challenge'] as const
+function BakushiCalculator() {
+  const [packType, setPackType] = useQueryState(
+    'bakushi_type',
+    parseAsStringLiteral(packTypes).withDefault('selection')
+  )
+  const [totalUrInPack, setTotalUrInPack] = useQueryState(
+    'bakushi_ur',
+    parseAsInteger.withDefault(8)
+  )
+  const [pulls, setPulls] = useQueryState(
+    'bakushi_pulls',
+    parseAsInteger.withDefault(100)
+  )
+  const [targetCount, setTargetCount] = useQueryState(
+    'bakushi_target',
+    parseAsInteger.withDefault(1)
+  )
+  const [result, setResult] = useState<BakushiResult | null>(null)
+
+  const handleCalculate = useCallback(() => {
+    const bakushiResult = calculateBakushi({
+      packType,
+      totalUrInPack,
+      pulls,
+      targetCount,
+    })
+    setResult(bakushiResult)
+  }, [packType, totalUrInPack, pulls, targetCount])
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle>爆死確率計算</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* パックの種類 */}
+          <div className="space-y-2">
+            <Label htmlFor="bakushiPackType">パックの種類</Label>
+            <Select
+              value={packType}
+              onValueChange={(value: PackType) => setPackType(value)}
+            >
+              <SelectTrigger id="bakushiPackType">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="selection">
+                  セレクションパック（100%パック内UR）
+                </SelectItem>
+                <SelectItem value="secret">
+                  シークレットパック（50%パック内UR）
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* パック内URの種類数 */}
+          <div className="space-y-2">
+            <Label htmlFor="bakushiTotalUr">パック内URの種類数</Label>
+            <Input
+              id="bakushiTotalUr"
+              type="number"
+              min={1}
+              max={20}
+              value={totalUrInPack}
+              onChange={(e) => setTotalUrInPack(Number(e.target.value))}
+            />
+          </div>
+
+          {/* 引いた連数 */}
+          <div className="space-y-2">
+            <Label htmlFor="bakushiPulls">引いた連数</Label>
+            <Input
+              id="bakushiPulls"
+              type="number"
+              min={1}
+              max={10000}
+              value={pulls}
+              onChange={(e) => setPulls(Number(e.target.value))}
+            />
+          </div>
+
+          {/* 目標枚数 */}
+          <div className="space-y-2">
+            <Label htmlFor="bakushiTarget">目標枚数（素引き）</Label>
+            <Select
+              value={String(targetCount)}
+              onValueChange={(value) => setTargetCount(Number(value))}
+            >
+              <SelectTrigger id="bakushiTarget">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1枚</SelectItem>
+                <SelectItem value="2">2枚</SelectItem>
+                <SelectItem value="3">3枚</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              この枚数を素引きできていない確率を計算します
+            </p>
+          </div>
+
+          {/* 計算ボタン */}
+          <Button
+            onClick={handleCalculate}
+            className="w-full"
+            size="lg"
+          >
+            計算する
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* 計算結果 */}
+      {result && (
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle>計算結果</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {pulls}連で{targetCount}枚素引きできていない確率
+            </p>
+          </CardHeader>
+          <CardContent>
+            <dl className="space-y-3">
+              <div className="flex justify-between items-center py-3 border-b bg-muted/30 -mx-3 px-3 rounded">
+                <dt className="text-muted-foreground">爆死確率</dt>
+                <dd className="text-2xl font-bold text-destructive">
+                  {result.probabilityPercent}
+                </dd>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <dt className="text-muted-foreground">
+                  {targetCount}枚素引きの期待連数
+                </dt>
+                <dd className="text-xl font-bold">{result.expectedPulls}連</dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 計算条件 */}
+      <Card className="gap-2 py-4">
+        <CardHeader>
+          <CardTitle className="text-base">計算条件</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground space-y-1">
+          <p>• 二項分布による確率計算（生成は考慮しない）</p>
+
+          <div className="space-y-1">
+            <p className="font-medium text-foreground">セレクションパック</p>
+            <p className="pl-3">• 1連あたり特定UR確率: 22.5% ÷ UR種類数</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-medium text-foreground">シークレットパック</p>
+            <p className="pl-3">• 10連あたりパック内UR期待値: 約1.175枚</p>
+            <p className="pl-3">• 1連あたり特定UR確率: 11.75% ÷ UR種類数</p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+const tabValues = ['expected-value', 'royal-challenge', 'bakushi'] as const
 
 function App() {
   const [activeTab, setActiveTab] = useQueryState(
@@ -594,10 +762,13 @@ function App() {
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof tabValues[number])}>
           <TabsList className="mb-4 w-full">
             <TabsTrigger value="expected-value" className="flex-1">
-              パック期待値計算
+              パック期待値
             </TabsTrigger>
             <TabsTrigger value="royal-challenge" className="flex-1">
-              ロイチャレ期待値
+              ロイチャレ
+            </TabsTrigger>
+            <TabsTrigger value="bakushi" className="flex-1">
+              爆死確率
             </TabsTrigger>
           </TabsList>
           <TabsContent value="expected-value">
@@ -605,6 +776,9 @@ function App() {
           </TabsContent>
           <TabsContent value="royal-challenge">
             <RoyalChallengeCalculator />
+          </TabsContent>
+          <TabsContent value="bakushi">
+            <BakushiCalculator />
           </TabsContent>
         </Tabs>
       </div>

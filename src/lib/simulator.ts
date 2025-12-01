@@ -4,6 +4,8 @@ import type {
   WantedCard,
   RoyalChallengeConfig,
   RoyalChallengeResult,
+  BakushiConfig,
+  BakushiResult,
 } from './types'
 import {
   SELECTION_UR_RATE_PER_PULL,
@@ -415,5 +417,96 @@ export function runRoyalSimulation(
     averageCost: Math.round(averageCost),
     medianCost: Math.round(medianCost),
     percentile90Cost: Math.round(percentile90Cost),
+  }
+}
+
+// =====================
+// 爆死確率計算
+// =====================
+
+// 二項係数を対数で計算（オーバーフロー防止）
+function logBinomial(n: number, k: number): number {
+  if (k > n || k < 0) return -Infinity
+  if (k === 0 || k === n) return 0
+
+  let result = 0
+  for (let i = 0; i < k; i++) {
+    result += Math.log(n - i) - Math.log(i + 1)
+  }
+  return result
+}
+
+// 二項分布の累積確率 P(X < k) = P(X <= k-1)
+function binomialCdf(n: number, k: number, p: number): number {
+  if (k <= 0) return 0
+  if (k > n) return 1
+  if (p === 0) return k > 0 ? 1 : 0
+  if (p === 1) return k > n ? 1 : 0
+
+  let cdf = 0
+  const logQ = Math.log(1 - p)
+  const logP = Math.log(p)
+
+  for (let i = 0; i < k; i++) {
+    const logProb = logBinomial(n, i) + i * logP + (n - i) * logQ
+    cdf += Math.exp(logProb)
+  }
+
+  return Math.min(1, Math.max(0, cdf))
+}
+
+// 1連あたりの特定UR確率を取得
+function getTargetUrProbability(
+  packType: 'selection' | 'secret',
+  totalUrInPack: number
+): number {
+  if (packType === 'selection') {
+    // セレクション: 1連あたり0.225のUR確率、100%パック内
+    return SELECTION_UR_RATE_PER_PULL / totalUrInPack
+  } else {
+    // シークレット: パック内URのみを対象
+    // 10連あたりのパック内UR期待値を近似計算
+    // 1-9パック: 各4スロット × 2.5% = 0.1 × 9 = 0.9
+    // 10パック目: 3スロット × 2.5% + 1スロット × 20% = 0.075 + 0.2 = 0.275
+    // 合計: 0.9 + 0.275 = 1.175 / 10連
+    const inPackUrPer10Pulls = 1.175
+    const inPackUrPerPull = inPackUrPer10Pulls / 10
+    return inPackUrPerPull / totalUrInPack
+  }
+}
+
+export function calculateBakushi(config: BakushiConfig): BakushiResult {
+  const { packType, totalUrInPack, pulls, targetCount } = config
+
+  const p = getTargetUrProbability(packType, totalUrInPack)
+
+  // N連でk枚未満の確率（爆死確率）
+  const probability = binomialCdf(pulls, targetCount, p)
+
+  // 期待連数: k枚引くための期待値 = k / p
+  const expectedPulls = targetCount / p
+
+  // 確率を%表示にフォーマット
+  let probabilityPercent: string
+  const percent = probability * 100
+
+  if (probability >= 0.9999999) {
+    probabilityPercent = '99.99999%以上'
+  } else if (probability <= 1e-10) {
+    probabilityPercent = `${percent.toExponential(2)}%`
+  } else if (probability >= 0.01) {
+    probabilityPercent = `${percent.toFixed(2)}%`
+  } else if (probability >= 0.0001) {
+    probabilityPercent = `${percent.toFixed(4)}%`
+  } else if (probability >= 0.000001) {
+    probabilityPercent = `${percent.toFixed(6)}%`
+  } else {
+    probabilityPercent = `${percent.toFixed(8)}%`
+  }
+
+  return {
+    probability,
+    probabilityPercent,
+    expectedPulls: Math.round(expectedPulls),
   }
 }

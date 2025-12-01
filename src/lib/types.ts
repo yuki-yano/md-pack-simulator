@@ -53,6 +53,20 @@ export const CP_TO_CRAFT = 30
 // 10連あたりのコスト
 export const COST_PER_10_PULLS = 2000 // 円
 
+// 爆死確率計算用
+export type BakushiConfig = {
+  packType: PackType
+  totalUrInPack: number
+  pulls: number // N連
+  targetCount: number // 目標枚数（これ未満だと爆死）
+}
+
+export type BakushiResult = {
+  probability: number // 爆死確率（0-1）
+  probabilityPercent: string // 爆死確率（%表示）
+  expectedPulls: number // 目標枚数を引くための期待連数
+}
+
 // セレクションパック用（従来の計算）
 export const SELECTION_UR_RATE_PER_10_PULLS = 2.25
 export const SELECTION_UR_RATE_PER_PULL = SELECTION_UR_RATE_PER_10_PULLS / 10
