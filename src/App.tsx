@@ -18,8 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { runSimulation } from '@/lib/simulator'
-import type { PackType, SimulationResult, WantedCard } from '@/lib/types'
+import { runSimulation, runRoyalSimulation } from '@/lib/simulator'
+import type {
+  PackType,
+  SimulationResult,
+  WantedCard,
+  RoyalChallengeResult,
+} from '@/lib/types'
 
 const packTypes = ['selection', 'secret'] as const
 
@@ -359,21 +364,247 @@ function PackExpectedValueCalculator() {
   )
 }
 
+const parseAsBoolean = createParser({
+  parse: (v: string): boolean => v === 'true',
+  serialize: (v: boolean): string => (v ? 'true' : 'false'),
+})
+
+function RoyalChallengeCalculator() {
+  const [packType, setPackType] = useQueryState(
+    'royal_type',
+    parseAsStringLiteral(packTypes).withDefault('selection')
+  )
+  const [totalUrInPack, setTotalUrInPack] = useQueryState(
+    'royal_ur',
+    parseAsInteger.withDefault(8)
+  )
+  const [targetCardName, setTargetCardName] = useQueryState(
+    'royal_card',
+    createParser({
+      parse: (v: string): string => v,
+      serialize: (v: string): string => v,
+    }).withDefault('')
+  )
+  const [disableCraft, setDisableCraft] = useQueryState(
+    'royal_craft',
+    parseAsBoolean.withDefault(false)
+  )
+  const [result, setResult] = useState<{
+    data: RoyalChallengeResult
+    cardName: string
+    disableCraft: boolean
+  } | null>(null)
+  const [isCalculating, setIsCalculating] = useState(false)
+
+  const handleCalculate = useCallback(() => {
+    if (targetCardName.trim() === '') return
+
+    setIsCalculating(true)
+    const cardName = targetCardName.trim()
+    const craftDisabled = disableCraft
+
+    setTimeout(() => {
+      const simulationResult = runRoyalSimulation({
+        packType,
+        totalUrInPack,
+        targetCardName: cardName,
+        disableCraft: craftDisabled,
+      })
+      setResult({
+        data: simulationResult,
+        cardName,
+        disableCraft: craftDisabled,
+      })
+      setIsCalculating(false)
+    }, 0)
+  }, [packType, totalUrInPack, targetCardName, disableCraft])
+
+  const formatCost = (cost: number): string => {
+    return cost.toLocaleString('ja-JP')
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle>ロイチャレ期待値計算</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* パックの種類 */}
+          <div className="space-y-2">
+            <Label htmlFor="royalPackType">パックの種類</Label>
+            <Select
+              value={packType}
+              onValueChange={(value: PackType) => setPackType(value)}
+            >
+              <SelectTrigger id="royalPackType">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="selection">
+                  セレクションパック（100%パック内UR）
+                </SelectItem>
+                <SelectItem value="secret">
+                  シークレットパック（50%パック内UR）
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* パック内URの種類数 */}
+          <div className="space-y-2">
+            <Label htmlFor="royalTotalUr">パック内URの種類数</Label>
+            <Input
+              id="royalTotalUr"
+              type="number"
+              min={1}
+              max={20}
+              value={totalUrInPack}
+              onChange={(e) => {
+                const value = Number(e.target.value)
+                setTotalUrInPack(value)
+              }}
+            />
+          </div>
+
+          {/* 狙いのカード名 */}
+          <div className="space-y-2">
+            <Label htmlFor="targetCard">狙いのカード名</Label>
+            <Input
+              id="targetCard"
+              placeholder="カード名を入力"
+              value={targetCardName}
+              onChange={(e) => setTargetCardName(e.target.value)}
+            />
+            <div className="flex items-center gap-2 pt-1">
+              <Checkbox
+                id="royalDisableCraft"
+                checked={disableCraft}
+                onCheckedChange={(checked) => setDisableCraft(checked === true)}
+              />
+              <Label
+                htmlFor="royalDisableCraft"
+                className="text-sm text-muted-foreground cursor-pointer"
+              >
+                生成不可
+              </Label>
+            </div>
+          </div>
+
+          {/* 計算ボタン */}
+          <Button
+            onClick={handleCalculate}
+            disabled={isCalculating || targetCardName.trim() === ''}
+            className="w-full"
+            size="lg"
+          >
+            {isCalculating ? '計算中...' : '計算する'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* 計算結果 */}
+      {result && (
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle>計算結果</CardTitle>
+            <p className="text-lg font-bold text-primary">
+              「{result.cardName}」のロイヤル
+              {result.disableCraft && (
+                <span className="ml-2 text-sm font-normal text-destructive">
+                  （生成不可）
+                </span>
+              )}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <dl className="space-y-3">
+              <div className="flex justify-between items-center py-2 border-b">
+                <dt className="text-muted-foreground">平均必要連数</dt>
+                <dd className="text-xl font-bold">{result.data.averagePulls}連</dd>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b">
+                <dt className="text-muted-foreground">中央値</dt>
+                <dd className="text-xl font-bold">{result.data.medianPulls}連</dd>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b">
+                <dt className="text-muted-foreground">90%タイル</dt>
+                <dd className="text-xl font-bold">{result.data.percentile90}連</dd>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b bg-muted/30 -mx-3 px-3 rounded">
+                <dt className="text-muted-foreground">平均費用</dt>
+                <dd className="text-xl font-bold text-primary">
+                  ¥{formatCost(result.data.averageCost)}
+                </dd>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b">
+                <dt className="text-muted-foreground">中央値費用</dt>
+                <dd className="text-xl font-bold">¥{formatCost(result.data.medianCost)}</dd>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <dt className="text-muted-foreground">90%タイル費用</dt>
+                <dd className="text-xl font-bold">
+                  ¥{formatCost(result.data.percentile90Cost)}
+                </dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 計算条件 */}
+      <Card className="gap-2 py-4">
+        <CardHeader>
+          <CardTitle className="text-base">計算条件</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground space-y-1">
+          <p>• ロイヤル加工確率: 1%</p>
+          <p>• 10連あたりのコスト: 2,000円</p>
+
+          <div className="space-y-1">
+            <p className="font-medium text-foreground">セレクションパック</p>
+            <p className="pl-3">• 10連あたりUR期待値: 2.25枚（パック内URのみ）</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-medium text-foreground">シークレットパック</p>
+            <p className="pl-3">• 5-8枚目のみパック内UR（ロイヤル対象）</p>
+            <p className="pl-3">• 1-4枚目はパック外UR（ロイヤル対象外）</p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+const tabValues = ['expected-value', 'royal-challenge'] as const
+
 function App() {
+  const [activeTab, setActiveTab] = useQueryState(
+    'tab',
+    parseAsStringLiteral(tabValues).withDefault('expected-value')
+  )
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="container mx-auto max-w-2xl">
         <h1 className="mb-6 text-2xl font-bold text-center">
           MD パックシミュレーター
         </h1>
-        <Tabs defaultValue="expected-value">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof tabValues[number])}>
           <TabsList className="mb-4 w-full">
             <TabsTrigger value="expected-value" className="flex-1">
               パック期待値計算
             </TabsTrigger>
+            <TabsTrigger value="royal-challenge" className="flex-1">
+              ロイチャレ期待値
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="expected-value">
             <PackExpectedValueCalculator />
+          </TabsContent>
+          <TabsContent value="royal-challenge">
+            <RoyalChallengeCalculator />
           </TabsContent>
         </Tabs>
       </div>

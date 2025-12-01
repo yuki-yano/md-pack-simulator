@@ -1,4 +1,10 @@
-import type { PackConfig, SimulationResult, WantedCard } from './types'
+import type {
+  PackConfig,
+  SimulationResult,
+  WantedCard,
+  RoyalChallengeConfig,
+  RoyalChallengeResult,
+} from './types'
 import {
   SELECTION_UR_RATE_PER_PULL,
   SECRET_BASE_UR_RATE,
@@ -6,6 +12,13 @@ import {
   SECRET_PITY_RATE,
   CP_PER_DUPE_UR,
   CP_TO_CRAFT_UR,
+  ROYAL_RATE,
+  SHINE_RATE,
+  CP_PER_BASIC_UR,
+  CP_PER_SHINE_UR,
+  CP_PER_ROYAL_UR,
+  CP_TO_CRAFT,
+  COST_PER_10_PULLS,
 } from './types'
 
 type SingleSimulationResult = {
@@ -214,5 +227,193 @@ export function runSimulation(
     medianPulls,
     percentile90,
     averageUrPulled: Math.round(averageUrPulled * 10) / 10,
+  }
+}
+
+// =====================
+// ロイチャレ期待値計算
+// =====================
+
+type RoyalSimulationState = {
+  cp: number
+  hasPity: boolean
+  urCountIn10Pulls: number
+}
+
+// 加工判定: ロイヤル1%, シャイン10%, ベーシック89%
+type Finish = 'royal' | 'shine' | 'basic'
+function rollFinish(): Finish {
+  const rand = Math.random()
+  if (rand < ROYAL_RATE) return 'royal'
+  if (rand < ROYAL_RATE + SHINE_RATE) return 'shine'
+  return 'basic'
+}
+
+// 分解pt取得
+function getDisenchantCp(finish: Finish): number {
+  switch (finish) {
+    case 'royal':
+      return CP_PER_ROYAL_UR
+    case 'shine':
+      return CP_PER_SHINE_UR
+    case 'basic':
+      return CP_PER_BASIC_UR
+  }
+}
+
+// URを引いた時の処理（目的カードかどうか、ロイヤルかどうか）
+// 戻り値: trueならロイヤルゲットで終了
+function processUrForRoyal(
+  state: RoyalSimulationState,
+  isTargetCard: boolean,
+  disableCraft: boolean
+): boolean {
+  const finish = rollFinish()
+
+  // 目的カードでロイヤルなら終了
+  if (isTargetCard && finish === 'royal') {
+    return true
+  }
+
+  // それ以外は分解してCP獲得
+  state.cp += getDisenchantCp(finish)
+
+  // 生成可能で30pt以上あれば生成試行
+  if (!disableCraft) {
+    while (state.cp >= CP_TO_CRAFT) {
+      state.cp -= CP_TO_CRAFT
+      // 生成時も1%でロイヤル
+      if (Math.random() < ROYAL_RATE) {
+        return true
+      }
+      // ロイヤルじゃなかったら分解（生成したカードも加工判定）
+      const craftedFinish = rollFinish()
+      if (craftedFinish === 'royal') {
+        // 生成で出たロイヤルは目的カードのロイヤル
+        return true
+      }
+      state.cp += getDisenchantCp(craftedFinish)
+    }
+  }
+
+  return false
+}
+
+// セレクションパック: 特定カードのロイヤルが出るまで
+function simulateRoyalSelection(config: RoyalChallengeConfig): number {
+  const { totalUrInPack, disableCraft } = config
+  const state: RoyalSimulationState = {
+    cp: 0,
+    hasPity: false,
+    urCountIn10Pulls: 0,
+  }
+  let pulls = 0
+
+  while (true) {
+    pulls++
+
+    // URが出た場合
+    if (Math.random() < SELECTION_UR_RATE_PER_PULL) {
+      const isTargetCard = Math.random() < 1 / totalUrInPack
+      if (processUrForRoyal(state, isTargetCard, disableCraft)) {
+        return pulls
+      }
+    }
+  }
+}
+
+// シークレットパック: 特定カードのロイヤルが出るまで
+function simulateRoyalSecret(config: RoyalChallengeConfig): number {
+  const { totalUrInPack, disableCraft } = config
+  const state: RoyalSimulationState = {
+    cp: 0,
+    hasPity: false,
+    urCountIn10Pulls: 0,
+  }
+
+  let pulls = 0
+
+  while (true) {
+    // 10連をシミュレート
+    state.urCountIn10Pulls = 0
+
+    for (let packIndex = 0; packIndex < 10; packIndex++) {
+      pulls++
+      const isTenthPack = packIndex === 9
+
+      // 1-4枚目: パック外UR (各2.5%) - 目的カードは出ない
+      for (let cardSlot = 0; cardSlot < 4; cardSlot++) {
+        if (Math.random() < SECRET_BASE_UR_RATE) {
+          state.urCountIn10Pulls++
+          // パック外URは目的カードではない
+          if (processUrForRoyal(state, false, disableCraft)) {
+            return pulls
+          }
+        }
+      }
+
+      // 5-8枚目: パック内UR - 目的カードの可能性あり
+      for (let cardSlot = 4; cardSlot < 8; cardSlot++) {
+        const isEighthCard = cardSlot === 7
+
+        let urRate: number
+        if (isTenthPack && isEighthCard) {
+          urRate = state.hasPity ? SECRET_PITY_RATE : SECRET_10TH_PACK_8TH_CARD_RATE
+        } else {
+          urRate = SECRET_BASE_UR_RATE
+        }
+
+        if (Math.random() < urRate) {
+          state.urCountIn10Pulls++
+          const isTargetCard = Math.random() < 1 / totalUrInPack
+          if (processUrForRoyal(state, isTargetCard, disableCraft)) {
+            return pulls
+          }
+        }
+      }
+    }
+
+    // 10連でURが出なかったら次の10連で天井
+    state.hasPity = state.urCountIn10Pulls === 0
+  }
+}
+
+function simulateRoyalOnce(config: RoyalChallengeConfig): number {
+  if (config.packType === 'selection') {
+    return simulateRoyalSelection(config)
+  } else {
+    return simulateRoyalSecret(config)
+  }
+}
+
+export function runRoyalSimulation(
+  config: RoyalChallengeConfig,
+  iterations: number = 10000
+): RoyalChallengeResult {
+  const pullCounts: number[] = []
+
+  for (let i = 0; i < iterations; i++) {
+    pullCounts.push(simulateRoyalOnce(config))
+  }
+
+  pullCounts.sort((a, b) => a - b)
+
+  const averagePulls = pullCounts.reduce((a, b) => a + b, 0) / iterations
+  const medianPulls = pullCounts[Math.floor(iterations / 2)]
+  const percentile90 = pullCounts[Math.floor(iterations * 0.9)]
+
+  // コスト計算（10連 = 2000円）
+  const costPerPull = COST_PER_10_PULLS / 10
+  const averageCost = averagePulls * costPerPull
+  const medianCost = medianPulls * costPerPull
+  const percentile90Cost = percentile90 * costPerPull
+
+  return {
+    averagePulls: Math.round(averagePulls * 10) / 10,
+    medianPulls,
+    percentile90,
+    averageCost: Math.round(averageCost),
+    medianCost: Math.round(medianCost),
+    percentile90Cost: Math.round(percentile90Cost),
   }
 }

@@ -20,6 +20,39 @@ export type SimulationResult = {
   averageUrPulled: number
 }
 
+// ロイチャレ期待値計算用
+export type RoyalChallengeConfig = {
+  packType: PackType
+  totalUrInPack: number
+  targetCardName: string
+  disableCraft: boolean
+}
+
+export type RoyalChallengeResult = {
+  averagePulls: number
+  medianPulls: number
+  percentile90: number
+  averageCost: number // 円
+  medianCost: number // 円
+  percentile90Cost: number // 円
+}
+
+// 加工確率
+export const ROYAL_RATE = 0.01 // 1%
+export const SHINE_RATE = 0.10 // 10%
+// ベーシック = 89% (残り)
+
+// 分解pt
+export const CP_PER_BASIC_UR = 10
+export const CP_PER_SHINE_UR = 15
+export const CP_PER_ROYAL_UR = 30
+
+// 生成コスト
+export const CP_TO_CRAFT = 30
+
+// 10連あたりのコスト
+export const COST_PER_10_PULLS = 2000 // 円
+
 // セレクションパック用（従来の計算）
 export const SELECTION_UR_RATE_PER_10_PULLS = 2.25
 export const SELECTION_UR_RATE_PER_PULL = SELECTION_UR_RATE_PER_10_PULLS / 10
