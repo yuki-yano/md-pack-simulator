@@ -612,7 +612,7 @@ function BakushiCalculator() {
     <div className="space-y-4">
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle>爆死確率計算</CardTitle>
+          <CardTitle>未達成確率計算</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* パックの種類 */}
@@ -706,7 +706,7 @@ function BakushiCalculator() {
           <CardContent>
             <dl className="space-y-3">
               <div className="flex justify-between items-center py-3 border-b bg-muted/30 -mx-3 px-3 rounded">
-                <dt className="text-muted-foreground">爆死確率</dt>
+                <dt className="text-muted-foreground">未達成確率</dt>
                 <dd className="text-2xl font-bold text-destructive">
                   {result.probabilityPercent}
                 </dd>
@@ -769,7 +769,7 @@ function App() {
               ロイチャレ
             </TabsTrigger>
             <TabsTrigger value="bakushi" className="flex-1">
-              爆死確率
+              達成確率
             </TabsTrigger>
           </TabsList>
           <TabsContent value="expected-value">

@@ -421,7 +421,7 @@ export function runRoyalSimulation(
 }
 
 // =====================
-// 爆死確率計算
+// 未達確率計算
 // =====================
 
 // 二項係数を対数で計算（オーバーフロー防止）
@@ -480,7 +480,7 @@ export function calculateBakushi(config: BakushiConfig): BakushiResult {
 
   const p = getTargetUrProbability(packType, totalUrInPack)
 
-  // N連でk枚未満の確率（爆死確率）
+  // N連でk枚未満の確率（未達確率）
   const probability = binomialCdf(pulls, targetCount, p)
 
   // 期待連数: k枚引くための期待値 = k / p
