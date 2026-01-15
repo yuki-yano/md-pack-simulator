@@ -95,7 +95,7 @@ function PackExpectedValueCalculator() {
   )
   const [totalUrInPack, setTotalUrInPack] = useQueryState(
     'ur',
-    parseAsInteger.withDefault(8)
+    parseAsInteger.withDefault(13)
   )
   const [wantedCards, setWantedCards] = useQueryState(
     'cards',
@@ -389,7 +389,7 @@ function RoyalChallengeExpectedValueCalculator() {
   )
   const [totalUrInPack, setTotalUrInPack] = useQueryState(
     'royal_ur',
-    parseAsInteger.withDefault(8)
+    parseAsInteger.withDefault(13)
   )
   const [targetCardName, setTargetCardName] = useQueryState(
     'royal_card',
@@ -694,7 +694,7 @@ function BakushiCalculator() {
   )
   const [totalUrInPack, setTotalUrInPack] = useQueryState(
     'bakushi_ur',
-    parseAsInteger.withDefault(8)
+    parseAsInteger.withDefault(13)
   )
   const [pulls, setPulls] = useQueryState(
     'bakushi_pulls',
@@ -883,15 +883,15 @@ const tabParamKeysByTab = {
 
 const tabParamParsers = {
   type: parseAsStringLiteral(packTypes).withDefault('selection'),
-  ur: parseAsInteger.withDefault(8),
+  ur: parseAsInteger.withDefault(13),
   cards: parseAsWantedCards.withDefault([]),
   royal_type: parseAsStringLiteral(packTypes).withDefault('selection'),
-  royal_ur: parseAsInteger.withDefault(8),
+  royal_ur: parseAsInteger.withDefault(13),
   royal_card: parseAsText.withDefault(''),
   royal_craft: parseAsBoolean.withDefault(false),
   royal_streak: parseAsInteger.withDefault(100),
   bakushi_type: parseAsStringLiteral(packTypes).withDefault('selection'),
-  bakushi_ur: parseAsInteger.withDefault(8),
+  bakushi_ur: parseAsInteger.withDefault(13),
   bakushi_pulls: parseAsInteger.withDefault(100),
   bakushi_target: parseAsInteger.withDefault(1),
 } as const
