@@ -717,7 +717,7 @@ function BakushiCalculator() {
       targetCount,
     })
     const rangeResults: Array<{ pulls: number; probabilityPercent: string }> = []
-    for (let rangePulls = 50; rangePulls <= 300; rangePulls += 10) {
+    for (let rangePulls = 50; rangePulls <= 400; rangePulls += 10) {
       const rangeResult = calculateBakushi({
         packType,
         totalUrInPack,
@@ -844,7 +844,7 @@ function BakushiCalculator() {
               </div>
             </dl>
             <div className="mt-4 space-y-2 text-xs text-muted-foreground">
-              <p className="font-medium">50〜300連で未達成確率</p>
+              <p className="font-medium">50〜400連で未達成確率</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1">
                 {distribution.map((entry) => (
                   <p key={entry.pulls}>
