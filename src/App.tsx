@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import {
   useQueryState,
+  useQueryStates,
   parseAsStringLiteral,
   parseAsInteger,
   createParser,
@@ -75,6 +76,16 @@ const parseAsWantedCards = createParser({
     }
   },
   serialize: (value: WantedCard[]): string => encodeBase64(JSON.stringify(value)),
+})
+
+const parseAsText = createParser({
+  parse: (value: string): string => value,
+  serialize: (value: string): string => value,
+})
+
+const parseAsBoolean = createParser({
+  parse: (v: string): boolean => v === 'true',
+  serialize: (v: boolean): string => (v ? 'true' : 'false'),
 })
 
 function PackExpectedValueCalculator() {
@@ -371,11 +382,6 @@ function PackExpectedValueCalculator() {
   )
 }
 
-const parseAsBoolean = createParser({
-  parse: (v: string): boolean => v === 'true',
-  serialize: (v: boolean): string => (v ? 'true' : 'false'),
-})
-
 function RoyalChallengeExpectedValueCalculator() {
   const [packType, setPackType] = useQueryState(
     'royal_type',
@@ -387,10 +393,7 @@ function RoyalChallengeExpectedValueCalculator() {
   )
   const [targetCardName, setTargetCardName] = useQueryState(
     'royal_card',
-    createParser({
-      parse: (v: string): string => v,
-      serialize: (v: string): string => v,
-    }).withDefault('')
+    parseAsText.withDefault('')
   )
   const [disableCraft, setDisableCraft] = useQueryState(
     'royal_craft',
@@ -852,11 +855,70 @@ function BakushiCalculator() {
 }
 
 const tabValues = ['expected-value', 'royal-challenge', 'royal-streak', 'bakushi'] as const
+type TabValue = (typeof tabValues)[number]
+
+const tabParamKeys = [
+  'type',
+  'ur',
+  'cards',
+  'royal_type',
+  'royal_ur',
+  'royal_card',
+  'royal_craft',
+  'royal_streak',
+  'bakushi_type',
+  'bakushi_ur',
+  'bakushi_pulls',
+  'bakushi_target',
+] as const
+
+type TabParamKey = (typeof tabParamKeys)[number]
+
+const tabParamKeysByTab = {
+  'expected-value': ['type', 'ur', 'cards'],
+  'royal-challenge': ['royal_type', 'royal_ur', 'royal_card', 'royal_craft'],
+  'royal-streak': ['royal_streak'],
+  'bakushi': ['bakushi_type', 'bakushi_ur', 'bakushi_pulls', 'bakushi_target'],
+} as const satisfies Record<TabValue, readonly TabParamKey[]>
+
+const tabParamParsers = {
+  type: parseAsStringLiteral(packTypes).withDefault('selection'),
+  ur: parseAsInteger.withDefault(8),
+  cards: parseAsWantedCards.withDefault([]),
+  royal_type: parseAsStringLiteral(packTypes).withDefault('selection'),
+  royal_ur: parseAsInteger.withDefault(8),
+  royal_card: parseAsText.withDefault(''),
+  royal_craft: parseAsBoolean.withDefault(false),
+  royal_streak: parseAsInteger.withDefault(100),
+  bakushi_type: parseAsStringLiteral(packTypes).withDefault('selection'),
+  bakushi_ur: parseAsInteger.withDefault(8),
+  bakushi_pulls: parseAsInteger.withDefault(100),
+  bakushi_target: parseAsInteger.withDefault(1),
+} as const
 
 function App() {
   const [activeTab, setActiveTab] = useQueryState(
     'tab',
     parseAsStringLiteral(tabValues).withDefault('expected-value')
+  )
+  const [, setTabParams] = useQueryStates(tabParamParsers)
+
+  const handleTabChange = useCallback(
+    (nextTabValue: string) => {
+      const nextTab = nextTabValue as TabValue
+      const keysToKeep = new Set(tabParamKeysByTab[nextTab])
+      const updates: Partial<Record<TabParamKey, null>> = {}
+
+      for (const key of tabParamKeys) {
+        if (!keysToKeep.has(key)) {
+          updates[key] = null
+        }
+      }
+
+      setActiveTab(nextTab, { history: 'push' })
+      void setTabParams(updates, { history: 'replace' })
+    },
+    [setActiveTab, setTabParams]
   )
 
   return (
@@ -865,7 +927,7 @@ function App() {
         <h1 className="mb-6 text-2xl font-bold text-center">
           MD パックシミュレーター
         </h1>
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof tabValues[number])}>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="mb-4 w-full">
             <TabsTrigger value="expected-value" className="flex-1">
               パック期待値
