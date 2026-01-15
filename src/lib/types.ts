@@ -37,6 +37,24 @@ export type RoyalChallengeResult = {
   percentile90Cost: number // 円
 }
 
+export type RoyalChallengeStreakConfig = {
+  attempts: number
+}
+
+export type RoyalChallengeStreakEntry = {
+  attempts: number
+  probability: number
+  probabilityPercent: string
+}
+
+export type RoyalChallengeStreakResult = {
+  failureStreakProbability: number
+  failureStreakPercent: string
+  successWithinProbability: number
+  successWithinPercent: string
+  failureStreakTable: RoyalChallengeStreakEntry[]
+}
+
 // 加工確率
 export const ROYAL_RATE = 0.01 // 1%
 export const SHINE_RATE = 0.10 // 10%

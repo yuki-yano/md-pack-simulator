@@ -4,6 +4,9 @@ import type {
   WantedCard,
   RoyalChallengeConfig,
   RoyalChallengeResult,
+  RoyalChallengeStreakConfig,
+  RoyalChallengeStreakEntry,
+  RoyalChallengeStreakResult,
   BakushiConfig,
   BakushiResult,
 } from './types'
@@ -420,6 +423,59 @@ export function runRoyalSimulation(
   }
 }
 
+function formatProbabilityPercent(probability: number): string {
+  const percent = probability * 100
+
+  if (probability >= 0.9999999) {
+    return '99.99999%以上'
+  }
+  if (probability <= 1e-10) {
+    return `${percent.toExponential(2)}%`
+  }
+  if (probability >= 0.01) {
+    return `${percent.toFixed(2)}%`
+  }
+  if (probability >= 0.0001) {
+    return `${percent.toFixed(4)}%`
+  }
+  if (probability >= 0.000001) {
+    return `${percent.toFixed(6)}%`
+  }
+  return `${percent.toFixed(8)}%`
+}
+
+// =====================
+// ロイチャレ上・下振れ計算
+// =====================
+
+export function calculateRoyalStreak(
+  config: RoyalChallengeStreakConfig
+): RoyalChallengeStreakResult {
+  const attempts = Math.max(0, Math.floor(config.attempts))
+  const failureRate = 1 - ROYAL_RATE
+
+  const failureStreakProbability = Math.pow(failureRate, attempts)
+  const successWithinProbability = 1 - failureStreakProbability
+
+  const failureStreakTable: RoyalChallengeStreakEntry[] = []
+  for (let streak = 50; streak <= 200; streak += 10) {
+    const probability = Math.pow(failureRate, streak)
+    failureStreakTable.push({
+      attempts: streak,
+      probability,
+      probabilityPercent: formatProbabilityPercent(probability),
+    })
+  }
+
+  return {
+    failureStreakProbability,
+    failureStreakPercent: formatProbabilityPercent(failureStreakProbability),
+    successWithinProbability,
+    successWithinPercent: formatProbabilityPercent(successWithinProbability),
+    failureStreakTable,
+  }
+}
+
 // =====================
 // 未達確率計算
 // =====================
@@ -486,23 +542,7 @@ export function calculateBakushi(config: BakushiConfig): BakushiResult {
   // 期待連数: k枚引くための期待値 = k / p
   const expectedPulls = targetCount / p
 
-  // 確率を%表示にフォーマット
-  let probabilityPercent: string
-  const percent = probability * 100
-
-  if (probability >= 0.9999999) {
-    probabilityPercent = '99.99999%以上'
-  } else if (probability <= 1e-10) {
-    probabilityPercent = `${percent.toExponential(2)}%`
-  } else if (probability >= 0.01) {
-    probabilityPercent = `${percent.toFixed(2)}%`
-  } else if (probability >= 0.0001) {
-    probabilityPercent = `${percent.toFixed(4)}%`
-  } else if (probability >= 0.000001) {
-    probabilityPercent = `${percent.toFixed(6)}%`
-  } else {
-    probabilityPercent = `${percent.toFixed(8)}%`
-  }
+  const probabilityPercent = formatProbabilityPercent(probability)
 
   return {
     probability,

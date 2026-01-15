@@ -18,12 +18,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { runSimulation, runRoyalSimulation, calculateBakushi } from '@/lib/simulator'
+import {
+  runSimulation,
+  runRoyalSimulation,
+  calculateBakushi,
+  calculateRoyalStreak,
+} from '@/lib/simulator'
 import type {
   PackType,
   SimulationResult,
   WantedCard,
   RoyalChallengeResult,
+  RoyalChallengeStreakResult,
   BakushiResult,
 } from '@/lib/types'
 
@@ -370,7 +376,7 @@ const parseAsBoolean = createParser({
   serialize: (v: boolean): string => (v ? 'true' : 'false'),
 })
 
-function RoyalChallengeCalculator() {
+function RoyalChallengeExpectedValueCalculator() {
   const [packType, setPackType] = useQueryState(
     'royal_type',
     parseAsStringLiteral(packTypes).withDefault('selection')
@@ -428,7 +434,7 @@ function RoyalChallengeCalculator() {
     <div className="space-y-4">
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle>ロイチャレ期待値計算</CardTitle>
+          <CardTitle>ロイチャレ期待値</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* パックの種類 */}
@@ -573,6 +579,105 @@ function RoyalChallengeCalculator() {
             <p className="pl-3">• 1-4枚目はパック外UR（ロイヤル対象外）</p>
             <p className="pl-3">• 確定UR: 10連でUR0枚なら次の10連10パック目8枚目が100%</p>
           </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function RoyalChallengeStreakCalculator() {
+  const [attempts, setAttempts] = useQueryState(
+    'royal_streak',
+    parseAsInteger.withDefault(100)
+  )
+  const [result, setResult] = useState<RoyalChallengeStreakResult | null>(null)
+
+  const handleCalculate = useCallback(() => {
+    const streakResult = calculateRoyalStreak({ attempts })
+    setResult(streakResult)
+  }, [attempts])
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle>ロイチャレ上・下振れ</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="royalStreakAttempts">生成回数（n）</Label>
+            <Input
+              id="royalStreakAttempts"
+              type="number"
+              min={1}
+              max={10000}
+              value={attempts}
+              onChange={(e) => setAttempts(Number(e.target.value))}
+            />
+            <p className="text-xs text-muted-foreground">
+              1回あたり1%でロイヤルになる前提です
+            </p>
+          </div>
+
+          <Button
+            onClick={handleCalculate}
+            className="w-full"
+            size="lg"
+          >
+            計算する
+          </Button>
+        </CardContent>
+      </Card>
+
+      {result && (
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle>計算結果</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              1%の生成を{attempts}回試したときの上・下振れ
+            </p>
+          </CardHeader>
+          <CardContent>
+            <dl className="space-y-3">
+              <div className="flex justify-between items-center py-2 border-b">
+                <dt className="text-muted-foreground">
+                  {attempts}連続で失敗したときの下位
+                </dt>
+                <dd className="text-xl font-bold text-destructive">
+                  {result.failureStreakPercent}
+                </dd>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <dt className="text-muted-foreground">
+                  {attempts}回以内に成功したときの上位
+                </dt>
+                <dd className="text-xl font-bold text-primary">
+                  {result.successWithinPercent}
+                </dd>
+              </div>
+            </dl>
+
+            <div className="mt-4 space-y-2 text-xs text-muted-foreground">
+              <p className="font-medium">50〜200連続失敗の確率</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1">
+                {result.failureStreakTable.map((entry) => (
+                  <p key={entry.attempts}>
+                    {entry.attempts}連続: {entry.probabilityPercent}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="gap-2 py-4">
+        <CardHeader>
+          <CardTitle className="text-base">計算条件</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground space-y-1">
+          <p>• ロイヤル生成確率: 1%</p>
+          <p>• 各試行は独立と仮定</p>
         </CardContent>
       </Card>
     </div>
@@ -746,7 +851,7 @@ function BakushiCalculator() {
   )
 }
 
-const tabValues = ['expected-value', 'royal-challenge', 'bakushi'] as const
+const tabValues = ['expected-value', 'royal-challenge', 'royal-streak', 'bakushi'] as const
 
 function App() {
   const [activeTab, setActiveTab] = useQueryState(
@@ -768,6 +873,9 @@ function App() {
             <TabsTrigger value="royal-challenge" className="flex-1">
               ロイチャレ
             </TabsTrigger>
+            <TabsTrigger value="royal-streak" className="flex-1">
+              ロイチャレ上・下振れ
+            </TabsTrigger>
             <TabsTrigger value="bakushi" className="flex-1">
               達成確率
             </TabsTrigger>
@@ -776,7 +884,10 @@ function App() {
             <PackExpectedValueCalculator />
           </TabsContent>
           <TabsContent value="royal-challenge">
-            <RoyalChallengeCalculator />
+            <RoyalChallengeExpectedValueCalculator />
+          </TabsContent>
+          <TabsContent value="royal-streak">
+            <RoyalChallengeStreakCalculator />
           </TabsContent>
           <TabsContent value="bakushi">
             <BakushiCalculator />
