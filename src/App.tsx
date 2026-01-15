@@ -705,6 +705,9 @@ function BakushiCalculator() {
     parseAsInteger.withDefault(1)
   )
   const [result, setResult] = useState<BakushiResult | null>(null)
+  const [distribution, setDistribution] = useState<
+    Array<{ pulls: number; probabilityPercent: string }>
+  >([])
 
   const handleCalculate = useCallback(() => {
     const bakushiResult = calculateBakushi({
@@ -713,7 +716,21 @@ function BakushiCalculator() {
       pulls,
       targetCount,
     })
+    const rangeResults: Array<{ pulls: number; probabilityPercent: string }> = []
+    for (let rangePulls = 50; rangePulls <= 300; rangePulls += 10) {
+      const rangeResult = calculateBakushi({
+        packType,
+        totalUrInPack,
+        pulls: rangePulls,
+        targetCount,
+      })
+      rangeResults.push({
+        pulls: rangePulls,
+        probabilityPercent: rangeResult.probabilityPercent,
+      })
+    }
     setResult(bakushiResult)
+    setDistribution(rangeResults)
   }, [packType, totalUrInPack, pulls, targetCount])
 
   return (
@@ -826,6 +843,16 @@ function BakushiCalculator() {
                 <dd className="text-xl font-bold">{result.expectedPulls}連</dd>
               </div>
             </dl>
+            <div className="mt-4 space-y-2 text-xs text-muted-foreground">
+              <p className="font-medium">50〜300連で未達成確率</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1">
+                {distribution.map((entry) => (
+                  <p key={entry.pulls}>
+                    {entry.pulls}連: {entry.probabilityPercent}
+                  </p>
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
