@@ -9,9 +9,11 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { SpecialPackCalculator } from '@/components/SpecialPackCalculator'
 import {
   Select,
   SelectContent,
@@ -193,16 +195,12 @@ function PackExpectedValueCalculator() {
           {/* パック内URの種類数 */}
           <div className="space-y-2">
             <Label htmlFor="totalUr">パック内URの種類数</Label>
-            <Input
+            <NumberInput
               id="totalUr"
-              type="number"
               min={1}
               max={20}
               value={totalUrInPack}
-              onChange={(e) => {
-                const value = Number(e.target.value)
-                setTotalUrInPack(value)
-              }}
+              onValueChange={setTotalUrInPack}
             />
           </div>
 
@@ -464,16 +462,12 @@ function RoyalChallengeExpectedValueCalculator() {
           {/* パック内URの種類数 */}
           <div className="space-y-2">
             <Label htmlFor="royalTotalUr">パック内URの種類数</Label>
-            <Input
+            <NumberInput
               id="royalTotalUr"
-              type="number"
               min={1}
               max={20}
               value={totalUrInPack}
-              onChange={(e) => {
-                const value = Number(e.target.value)
-                setTotalUrInPack(value)
-              }}
+              onValueChange={setTotalUrInPack}
             />
           </div>
 
@@ -609,13 +603,12 @@ function RoyalChallengeStreakCalculator() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="royalStreakAttempts">生成回数（n）</Label>
-            <Input
+            <NumberInput
               id="royalStreakAttempts"
-              type="number"
               min={1}
               max={10000}
               value={attempts}
-              onChange={(e) => setAttempts(Number(e.target.value))}
+              onValueChange={setAttempts}
             />
             <p className="text-xs text-muted-foreground">
               1回あたり1%でロイヤルになる前提です
@@ -764,26 +757,24 @@ function BakushiCalculator() {
           {/* パック内URの種類数 */}
           <div className="space-y-2">
             <Label htmlFor="bakushiTotalUr">パック内URの種類数</Label>
-            <Input
+            <NumberInput
               id="bakushiTotalUr"
-              type="number"
               min={1}
               max={20}
               value={totalUrInPack}
-              onChange={(e) => setTotalUrInPack(Number(e.target.value))}
+              onValueChange={setTotalUrInPack}
             />
           </div>
 
           {/* 引いた連数 */}
           <div className="space-y-2">
             <Label htmlFor="bakushiPulls">引いた連数</Label>
-            <Input
+            <NumberInput
               id="bakushiPulls"
-              type="number"
               min={1}
               max={10000}
               value={pulls}
-              onChange={(e) => setPulls(Number(e.target.value))}
+              onValueChange={setPulls}
             />
           </div>
 
@@ -881,13 +872,22 @@ function BakushiCalculator() {
   )
 }
 
-const tabValues = ['expected-value', 'royal-challenge', 'royal-streak', 'bakushi'] as const
+const tabValues = [
+  'expected-value',
+  'special-pack',
+  'royal-challenge',
+  'royal-streak',
+  'bakushi',
+] as const
 type TabValue = (typeof tabValues)[number]
 
 const tabParamKeys = [
   'type',
   'ur',
   'cards',
+  'special_pulls',
+  'special_gems',
+  'special_ur_count',
   'royal_type',
   'royal_ur',
   'royal_card',
@@ -903,6 +903,11 @@ type TabParamKey = (typeof tabParamKeys)[number]
 
 const tabParamKeysByTab = {
   'expected-value': ['type', 'ur', 'cards'],
+  'special-pack': [
+    'special_pulls',
+    'special_gems',
+    'special_ur_count',
+  ],
   'royal-challenge': ['royal_type', 'royal_ur', 'royal_card', 'royal_craft'],
   'royal-streak': ['royal_streak'],
   'bakushi': ['bakushi_type', 'bakushi_ur', 'bakushi_pulls', 'bakushi_target'],
@@ -912,6 +917,9 @@ const tabParamParsers = {
   type: parseAsStringLiteral(packTypes).withDefault('selection'),
   ur: parseAsInteger.withDefault(13),
   cards: parseAsWantedCards.withDefault([]),
+  special_pulls: parseAsInteger.withDefault(20),
+  special_gems: parseAsInteger.withDefault(3000),
+  special_ur_count: parseAsInteger.withDefault(2),
   royal_type: parseAsStringLiteral(packTypes).withDefault('selection'),
   royal_ur: parseAsInteger.withDefault(13),
   royal_card: parseAsText.withDefault(''),
@@ -955,22 +963,28 @@ function App() {
           MD パックシミュレーター
         </h1>
         <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="mb-4 w-full">
-            <TabsTrigger value="expected-value" className="flex-1">
+          <TabsList className="mb-4 h-auto w-full justify-start overflow-x-auto p-1">
+            <TabsTrigger value="expected-value" className="shrink-0 px-3">
               パック期待値
             </TabsTrigger>
-            <TabsTrigger value="royal-challenge" className="flex-1">
+            <TabsTrigger value="special-pack" className="shrink-0 px-3">
+              特設期待値
+            </TabsTrigger>
+            <TabsTrigger value="royal-challenge" className="shrink-0 px-3">
               ロイチャレ
             </TabsTrigger>
-            <TabsTrigger value="royal-streak" className="flex-1">
+            <TabsTrigger value="royal-streak" className="shrink-0 px-3">
               ロイチャレ上・下振れ
             </TabsTrigger>
-            <TabsTrigger value="bakushi" className="flex-1">
+            <TabsTrigger value="bakushi" className="shrink-0 px-3">
               達成確率
             </TabsTrigger>
           </TabsList>
           <TabsContent value="expected-value">
             <PackExpectedValueCalculator />
+          </TabsContent>
+          <TabsContent value="special-pack">
+            <SpecialPackCalculator />
           </TabsContent>
           <TabsContent value="royal-challenge">
             <RoyalChallengeExpectedValueCalculator />
