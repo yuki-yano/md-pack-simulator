@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://pack-simulator.miyauchidp.dev/sitemap.xml

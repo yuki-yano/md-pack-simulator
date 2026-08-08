@@ -3,10 +3,86 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MD パックシミュレーター</title>
+    <title>MD パックシミュレーター | UR期待値・必要ジェム・達成確率を計算</title>
+    <meta
+      name="description"
+      content="遊戯王マスターデュエルのパックから欲しいURを揃えるまでの必要ジェム、達成確率、ロイヤル加工、特設パックのアクセサリ実質価格を計算できる無料ツールです。"
+    />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://pack-simulator.miyauchidp.dev/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ja_JP" />
+    <meta property="og:url" content="https://pack-simulator.miyauchidp.dev/" />
+    <meta property="og:site_name" content="miyauchidp.dev" />
+    <meta
+      property="og:title"
+      content="MD パックシミュレーター | UR期待値・必要ジェム・達成確率を計算"
+    />
+    <meta
+      property="og:description"
+      content="マスターデュエルのパック期待値、必要ジェム、ロイヤル加工、特設パックの価値を計算できる無料ツールです。"
+    />
+    <meta name="twitter:card" content="summary" />
+    <style>
+      #static-introduction {
+        box-sizing: border-box;
+        width: min(100% - 2rem, 48rem);
+        margin: 2rem auto;
+        color: #1e293b;
+        font-family:
+          system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.75;
+      }
+      #static-introduction h1 {
+        margin-bottom: 1rem;
+        font-size: 1.75rem;
+        line-height: 1.35;
+      }
+      #static-introduction h2 {
+        margin-top: 2rem;
+        font-size: 1.25rem;
+      }
+      #static-introduction a {
+        color: #4f46e5;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main id="static-introduction">
+        <h1>MD パックシミュレーター</h1>
+        <p>
+          MD
+          パックシミュレーターは、遊戯王マスターデュエルでパックを引く前に、欲しいURを揃えるまでの必要ジェムや達成確率を計算する無料のブラウザツールです。通常パック、特設パック、ロイヤル加工を同じ確率モデルで試算し、感覚だけでは比較しづらい購入条件を数字で確認できます。入力した条件と計算結果はURLへ保存されるため、後から同じ条件を開いたり、他のプレイヤーと共有したりできます。
+        </p>
+
+        <h2>欲しいURを揃えるまでの期待値</h2>
+        <p>
+          パック内のUR種類数、欲しいURの種類、各カードの必要枚数、ピックアップ対象かどうかを設定すると、目標を達成するまでに必要な10連回数とジェムの期待値を計算します。期待値は長期間繰り返した場合の平均であり、1回の開封結果を保証する値ではありません。そのため、このツールでは指定した回数以内に揃う達成確率と、上振れ・下振れを含む分布もあわせて確認できます。
+        </p>
+
+        <h2>特設パックとアクセサリの価値</h2>
+        <p>
+          アクセサリ付きの特設パックでは、提供される連数、販売価格、UR確定枚数を入力します。カード部分を通常パックのUR期待値へ換算し、支払額との差をアクセサリの実質価格として表示します。カードの価値とアクセサリの価値を分けることで、通常パックを引く場合と比べて購入条件が自分に合うか判断できます。
+        </p>
+
+        <h2>ロイヤル加工を引ける確率</h2>
+        <p>
+          URの加工率をもとに、ロイヤル加工を1枚以上引ける確率や、指定枚数を得るまでの開封量を試算できます。ピックアップの種類数や対象カードの条件を変えられるため、特定のカードを狙う場合と、どのURでもよい場合を分けて比較できます。計算は公開されている排出条件を前提にした確率上の試算であり、実際の開封結果にはばらつきがあります。
+        </p>
+
+        <h2>詳しい説明と計算例</h2>
+        <p>
+          機能全体の説明は
+          <a href="https://miyauchidp.dev/products/pack-simulator/">紹介ページ</a>
+          にまとめています。20連、3,000ジェム、UR確定2枚の特設パックを例にした計算式は、
+          <a href="https://miyauchidp.dev/guides/special-pack-accessory-value/"
+            >特設パックのアクセサリ実質価格を求める解説記事</a
+          >
+          で確認できます。
+        </p>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
