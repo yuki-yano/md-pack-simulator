@@ -996,6 +996,20 @@ function App() {
             <BakushiCalculator />
           </TabsContent>
         </Tabs>
+        <footer className="mt-8 flex flex-wrap justify-center gap-x-4 gap-y-2 border-t pt-4 pb-2 text-xs text-muted-foreground">
+          <a
+            href="https://miyauchidp.dev/guides/selection-pack-ur-completion/"
+            className="transition-colors hover:text-foreground"
+          >
+            URコンプリートの解説
+          </a>
+          <a
+            href="https://miyauchidp.dev/guides/special-pack-accessory-value/"
+            className="transition-colors hover:text-foreground"
+          >
+            特設パックの解説
+          </a>
+        </footer>
       </div>
     </div>
   )
