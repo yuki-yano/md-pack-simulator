@@ -1009,6 +1009,15 @@ function App() {
           >
             特設パックの解説
           </a>
+          <a href="https://miyauchidp.dev/about/" className="transition-colors hover:text-foreground">
+            運営者情報
+          </a>
+          <a href="https://miyauchidp.dev/privacy-policy/" className="transition-colors hover:text-foreground">
+            プライバシーポリシー
+          </a>
+          <a href="https://miyauchidp.dev/contact/" className="transition-colors hover:text-foreground">
+            お問い合わせ
+          </a>
         </footer>
       </div>
     </div>
